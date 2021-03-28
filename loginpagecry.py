@@ -4,34 +4,23 @@ import mysql.connector,string
 from tkinter.messagebox import showinfo,showerror,askyesno
 from random import randint,uniform,shuffle
 import matplotlib.pyplot as plt
-import webbrowser,data
+import webbrowser,requests
 
 ##########################################################################################
 
-#for reading the cryptocurrency info. from 'crypto' file
-def file_read(svalue):
-    txt_list=[]
-    file=open('crypto.txt','r',encoding='utf8')
-    while True:
-        txt=file.readline()
-        #checking if line read is search value or not
-        if txt==svalue+'\n':
-            #if it is search value than preparing a info list of the search value
-            while txt!='\n':
-                #if readline is end of file than break
-                if txt=='':
-                    break
-                #else if it is not'----' then add to list
-                elif txt[0]!='-':
-                    txt_list+=[txt]
-                txt=file.readline()
-        elif txt=='':
-            break
-        else:
-            continue
-    file.flush()
-    file.close()
-    return txt_list
+#for getting cryptocurrency data
+def getData(parameter=None):
+    if parameter==None:
+        url = "https://api.coincap.io/v2/assets"
+
+    elif parameter!=None:
+        url = "https://api.coincap.io/v2/assets/"+parameter
+
+    response = requests.request("GET", url)
+
+    data=response.json()
+    data=data['data']
+    return data    
 
 ##########################################################################################
 
@@ -83,7 +72,7 @@ def sendcon():
         for i in l:
             i.destroy()
 
-        root.title('Send Bitcoins - KRYPTON WALLET')
+        root.title('Send Bitcoins - KryptoCase')
 
         img=PhotoImage(file='edited.png')
         image_label=Label(root,image=img,width=1000,height=500)
@@ -122,7 +111,7 @@ def sendDetails():
     root.maxsize(1000,500)
     root.minsize(1000,500)
 
-    root.title('Send Bitcoins - KRYPTON WALLET')
+    root.title('Send Bitcoins - KryptoCase')
 
     img=PhotoImage(file='edited.png')
     image_label=Label(root,image=img,width=1000,height=500)
@@ -146,8 +135,6 @@ def sendDetails():
         pad+=50
 
     Button(root,text='Next',command=sendcon,font=('Consolas','15','bold')).place(x=460,y=450)
-
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').pack(anchor='se',side='bottom')
 
 ##########################################################################################
 
@@ -195,6 +182,8 @@ def sellcon():
         cur.execute('use crypto')
         cur.execute('select Bitcoins from userlog where EmailAddress=(%s)',(emailadd.get(),))
         fetchdata=cur.fetchone()
+        cur.close()
+        conn.close()
 
         if bitcoin.get()!='':
             if float(fetchdata[0])>=float(bitcoin.get()):
@@ -219,15 +208,11 @@ def sellcon():
                 Label(root,text='Bitcoins you are selling:',anchor='w',width=25,font=('Consolas','16','bold'),bg='skyblue',fg='darkgreen').place(x=200,y=200)
                 Label(root,text=bitcoin.get()+' BTC',font=('Consolas','16','bold'),anchor='w',width=15,bg='skyblue',fg='darkgreen').place(x=550,y=200)
 
-                cur.execute('select Price from cryptodata where SNo=1')
-                fetchdata=cur.fetchone()
-
-                bittousd=eval('%s*%s'%(bitcoin.get(),fetchdata[0].lstrip('$')))
+                cryptoData=getData('bitcoin')
+                
+                bittousd=eval('%s*%s'%(bitcoin.get(),cryptoData['priceUsd']))
                 Label(root,text='USD you will receive:',anchor='w',width=25,font=('Consolas','16','bold'),bg='skyblue',fg='darkgreen').place(x=200,y=300)
                 Label(root,text='$ %d'%bittousd,font=('Consolas','16','bold'),anchor='w',width=15,bg='skyblue',fg='darkgreen').place(x=550,y=300)
-                
-                cur.close()
-                conn.close()
                 
                 Button(root,text='Back',command=sellDetails,font=('Consolas','15','bold')).place(x=400,y=450)
                 Button(root,text='Sell',command=sell,font=('Consolas','15','bold')).place(x=530,y=450)
@@ -255,7 +240,7 @@ def sellDetails():
     root.maxsize(1000,500)
     root.minsize(1000,500)
     
-    root.title('Sell Your Bitcoins - KRYPTON WALLET')
+    root.title('Sell Your Bitcoins - KryptoCase')
 
     img=PhotoImage(file='edited.png')
     image_label=Label(root,image=img,width=1000,height=500)
@@ -272,8 +257,6 @@ def sellDetails():
 
     Button(root,text='Next',command=sellcon,font=('Consolas','14','bold')).place(x=460,y=450)
 
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').pack(anchor='se',side='bottom')
-
 ##########################################################################################
 
 #for buying bitcoins
@@ -287,14 +270,8 @@ def buy():
 def buycon():
     try:
         if USD.get()!='':
-            #connection establishment and checking bitcoins rate
-            conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
-            cur=conn.cursor()
-            cur.execute('use crypto')
-            cur.execute('select Price from cryptodata where SNo=1')
-            fetchdata=cur.fetchone()
-
-            usdtobit=eval('%s/%s'%(USD.get(),fetchdata[0].lstrip('$')))
+            cryptoData=getData('bitcoin')
+            usdtobit=eval('%s/%s'%(USD.get(),cryptoData['priceUsd']))
             
             #clears the root. 
             l=root.winfo_children()
@@ -314,7 +291,7 @@ def buycon():
             Label(root,text='Review Details',font=('Consolas','32','bold'),bg='skyblue',fg='darkgreen').pack(pady=10)
 
             #displaying no. of bitcoins being bought and cost in USD
-            Label(root,text='USD u are spending:',font=('Consolas','16','bold'),anchor='w',width=27,bg='skyblue',fg='darkgreen').place(x=200,y=200)
+            Label(root,text='USD you are spending:',font=('Consolas','16','bold'),anchor='w',width=27,bg='skyblue',fg='darkgreen').place(x=200,y=200)
             Label(root,text='$ '+USD.get(),font=('Consolas','16','bold'),anchor='w',width=15,bg='skyblue',fg='darkgreen').place(x=550,y=200)
 
             Label(root,text='Bitcoins you will receive:',font=('Consolas','16','bold'),anchor='w',width=27,bg='skyblue',fg='darkgreen').place(x=200,y=300)
@@ -347,7 +324,7 @@ def buyDetails():
     root.maxsize(1000,500)
     root.minsize(1000,500)
     
-    root.title('Buy Bitcoins - KRYPTON WALLET')
+    root.title('Buy Bitcoins - KryptoCase')
 
     img=PhotoImage(file='edited.png')
     image_label=Label(root,image=img,width=1000,height=500)
@@ -359,56 +336,13 @@ def buyDetails():
     Label(root,text='Buy Bitcoins',font=('Consolas','32','bold'),bg='skyblue',fg='darkgreen').pack(pady=10)
 
     USD.set('')
-    Label(root,text='How much USD do u want to spend?',font=('Consolas','16','bold'),bg='skyblue',fg='darkgreen').place(x=150,y=200)
+    Label(root,text='How much USD do you want to spend?',font=('Consolas','16','bold'),bg='skyblue',fg='darkgreen').place(x=150,y=200)
     Entry(root,textvariable=USD,width=20,font='lucida 15').place(x=600,y=200)
 
     Button(root,text='Next',command=buycon,font=('Consolas','14','bold')).place(x=460,y=450)
-
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').pack(anchor='se',side='bottom')
     
 ##########################################################################################
-
-#for displaying cryptocurrency info. from crypto file
-def display_info(event):
-    #getting text from file
-    sval=event.widget.cget('text')
-    txt_info=file_read(sval)
     
-    #clears the root. 
-    l=root.winfo_children()
-    for i in l:
-        i.destroy()
-
-    #root resizing
-    root.geometry('1300x700')
-    root.maxsize(1300,700)
-    root.minsize(1300,700)
-
-    img=PhotoImage(file='edited1.png')
-    image_label=Label(root,image=img,width=1300,height=700)
-    image_label.place(x=0,y=0)
-    image_label.image=img
-
-    root.title('%s - KRYPTON WALLET'%sval)
-
-    #placing widgets and displaying text
-    Button(root,text="Back",command=mainWin,font=('Consolas','14','bold')).place(x=20,y=10)
-
-    #search value as heading
-    Label(root,text=txt_info[0].rstrip('\n'),font=('Consolas','32','bold'),bg='skyblue',fg='darkgreen').pack(pady=10)
-
-    #changing info list of search value into string and then displaying it
-    text=''
-    i=1
-    while i<len(txt_info):
-        text+=txt_info[i]
-        i+=1
-    Message(root,text=text,font=('Consolas','14'),width=900,relief=RIDGE,borderwidth=6).pack(pady=10)
-
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').pack(anchor='se',side='bottom')
-
-##########################################################################################
-
 #for adding cryptocurrency to user's favourites list
 def add_favourites(event):
     text=event.widget.cget('text')
@@ -484,34 +418,33 @@ def remove_favourites(event):
 
 #for displaying user's favourite
 def show_favourites():
-    #connection establishment and fetching users favourites list and its data from cryptodata table
+    #connection establishment and fetching users favourites list
     conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
     cur=conn.cursor(buffered=True)
     cur.execute('use crypto')
     cur.execute('select favourites from userlog where emailaddress=(%s)',(emailadd.get(),))
     fetchdata=cur.fetchone()
+    cur.close()
+    conn.close()
+    
     if fetchdata[0]!=None:
         fetchdata=fetchdata[0].split(',')
 
-        cryptodata=[]
+        cryptoData=[]
         for i in fetchdata:
-            cur.execute('select * from cryptodata where Name=(%s)',(i,))
-            cryptodata+=[cur.fetchone()]
-
-        cur.close()
-        conn.close()
-
+            cryptoData+=[getData(i)]
+            
         #clears the root. 
         l=root.winfo_children()
         for i in l:
             i.destroy()
             
         #root resizing
-        root.geometry('1300x700+0+0')
+        root.geometry('1500x700+0+0')
         root.maxsize(1300,700)
         root.minsize(1300,700)
 
-        root.title('Your Favourites - KRYPTON WALLET')
+        root.title('Your Favourites - KryptoCase')
 
         img=PhotoImage(file='edited1.png')
         image_label=Label(root,image=img,width=1300,height=700)
@@ -527,49 +460,46 @@ def show_favourites():
         '''''''''''''''''''''''''''''''''''''''''''''
 
         ##################################
-        for i in range(len(cryptodata)-1):
+        for i in range(len(cryptoData)-1):
             smallndx=i
-            for j in range(i+1,len(cryptodata)):
-                if cryptodata[j][0]<cryptodata[smallndx][0]:
+            for j in range(i+1,len(cryptoData)):
+                if eval(cryptoData[j]['rank'])<eval(cryptoData[smallndx]['rank']):
                     smallndx=j
             if smallndx!=i:
-                cryptodata[smallndx],cryptodata[i]=cryptodata[i],cryptodata[smallndx]
+                cryptoData[smallndx],cryptoData[i]=cryptoData[i],cryptoData[smallndx]
 
         root.anchor(anchor='center')
 
         #label text list
-        labtxt=['S.NO.','Name','Market_Cap','Price','Volume','Circulating_Supply','Change_24h']
+        labtxt=['S.No.','Name','Market_Cap','Price','Volume','Circulating_Supply','Change_24h']
         labl=[]
         for i in range(7):
             if i==0 or i==1:
-                Label(root,text=labtxt[i],font=('Consolas','14','bold'),relief=SOLID).grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
+                Label(root,text=labtxt[i],font=('Consolas','14','bold','underline'),relief=SOLID).grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
             else:
-                labl.append(Label(root,text=labtxt[i],font=('Consolas','14','bold','underline'),relief=SOLID))
+                labl.append(Label(root,text=labtxt[i],font=('Consolas','14','bold','underline'),cursor='hand2',relief=SOLID))
                 labl[-1].grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
                 labl[-1].bind('<Button-1>',show_graph)
 
-        for i in range(1,len(cryptodata)+1):
-            Label(root,text=i,font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,ipady=3,ipadx=3,pady=1,padx=1,sticky='nsew')
-
-        #label list for creating labels binded to an event
-        labellist=[]
-        for i in range(1,len(cryptodata)+1):
-            labellist.append(Label(root,text=cryptodata[i-1][1],font=('Consolas','14','underline','bold'),relief=SUNKEN))
-            labellist[-1].grid(row=i,column=1,ipady=3,ipadx=3,sticky='nsew',pady=1,padx=1)
-            labellist[-1].bind("<Button-1>",display_info)
+        #calling getData func to data of top 10 cryptocurrencies
+        cryptoData=getData()
+        
+        for i in range(1,11):
+            Label(root,text=i,font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,ipady=3,ipadx=3,pady=1,padx=1,sticky='nsew') 
 
         #remaining fields of cryptodata table
-        for i in range(1,len(cryptodata)+1):
-            Label(root,text=cryptodata[i-1][2],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=2,pady=1,padx=1,ipady=3,ipadx=3,sticky='nsew')
-            Label(root,text=cryptodata[i-1][3],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=3,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-            Label(root,text=cryptodata[i-1][4],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=4,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-            Label(root,text=cryptodata[i-1][5],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=5,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-            Label(root,text=cryptodata[i-1][6],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=6,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+        for i in range(1,11):
+            Label(root,text=cryptoData[i-1]['name'],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=1,ipady=3,ipadx=3,sticky='nsew',pady=1,padx=1)
+            Label(root,text='$'+str(round(float(cryptoData[i-1]['marketCapUsd']),3)),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=2,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+            Label(root,text='$'+str(round(float(cryptoData[i-1]['priceUsd']),3)),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=3,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+            Label(root,text='$'+str(round(float(cryptoData[i-1]['volumeUsd24Hr']),3)),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=4,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+            Label(root,text=str(round(float(cryptoData[i-1]['supply']),3))+' %s'%(cryptoData[i-1]['symbol']),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=5,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+            Label(root,text=str(round(float(cryptoData[i-1]['changePercent24Hr']),3))+'%',font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=6,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
 
         #Delete from favourite button
         butlist=[]
-        for i in range(1,len(cryptodata)+1):
-            butlist.append(Button(root,text='Remove %s from favourites'%(cryptodata[i-1][1]),font=('OCR-A-Extended','14','bold')))
+        for i in range(1,len(cryptoData)+1):
+            butlist.append(Button(root,text='Remove %s from favourites'%(cryptoData[i-1][1]),font=('OCR-A-Extended','14','bold')))
             butlist[-1].grid(row=i,column=7,pady=1,padx=7,ipady=3,ipadx=3,sticky='nsew')
             butlist[-1].bind('<Button-1>',remove_favourites)
         
@@ -608,31 +538,26 @@ def delete_account():
 #for showing graph of cryptodata table
 def show_graph(event):
     txt=event.widget.cget('text')
-    #connection establishment and fetching data for graph
-    conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
-    cur=conn.cursor()
-    cur.execute('use crypto')
-    cur.execute('select %s from cryptodata'%(txt))
-    fetchdata=cur.fetchall()
-    cur.close()
-    conn.close()
+    cryptoData=getData()
 
     #this block is to create a list of graph data
-    labtxt=['Market_Cap','Price','Volume']
-    tick_sym=[' BTC',' ETH',' XRP',' USDT',' BCH',' LTC',' EOS',' BNB',' BSV',' XLM']
     graphdata=[]
-    for i in range(len(fetchdata)):
-        if txt in labtxt:
-            graphdata+=[float(fetchdata[i][0].lstrip('$'))]
+    for i in range(10):
+        if txt=='Market_Cap':
+            graphdata+=[float(cryptoData[i]['marketCapUsd'].lstrip('$'))]
+        elif txt=='Price':
+            graphdata+=[float(cryptoData[i]['priceUsd'].lstrip('$'))]
+        elif txt=='Volume':
+            graphdata+=[float(cryptoData[i]['volumeUsd24Hr'].lstrip('$'))]
         elif txt=='Circulating_Supply':
-            graphdata+=[int(fetchdata[i][0].replace(tick_sym[i],''))]
+            graphdata+=[float(cryptoData[i]['supply'].replace(cryptoData[i]['symbol'],''))]
         elif txt=='Change_24h':
-            if ord(fetchdata[i][0][0])==45:
-                graphdata.append(eval(fetchdata[i][0].rstrip('%')+'*-1'))
-            else:
-                graphdata+=[float(fetchdata[i][0].rstrip('%'))]
+            graphdata+=[eval(cryptoData[i]['changePercent24Hr'].rstrip('%'))]
 
-    crypto_list=['Bitcoin','Ethereum','XRP','Tether','Bitcoin Cash','Litecoin','EOS','Binance Coin','Bitcoin SV','Stellar']    
+    crypto_list=[]
+    for i in range(10):
+        crypto_list+=[cryptoData[i]['name']]
+        
     plt.figure(figsize=(13,6))
     plt.gcf().canvas.set_window_title('%s graph'%txt)
     plt.plot(graphdata,color='magenta',marker='^',markerfacecolor='g',markersize=10,markeredgecolor='g')
@@ -647,88 +572,76 @@ def show_graph(event):
 
 ##########################################################################################
 
-#for creating a right pane where all the options regarding user is displayed
-def options(event):
-    #adding a pane
-    pane=PanedWindow(root,bg='maroon',height=1400,width=300,orient='vertical',relief='ridge',borderwidth=5)
-    pane.place(x=1000,y=0)
-
-    #adding widgets in pane
-    back=Button(pane,text="Back",command=mainWin,font=('Consolas','14','bold'))
-    pane.add(back)
-    back.place(x=15,y=5)
-
-    label_l=['Balance(BTC):-','Balance(USD):-']
-    pad=100
-    for i in range(0,2):
-        l=Label(pane,text=label_l[i],font=('Consolas','14'),bg='maroon',fg='white')
-        pane.add(l)
-        l.place(x=2,y=pad)
-        pad+=40
-
-    #connection establishment and fetching no. of bticoins and price from table
-    conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
-    cur=conn.cursor()
-    cur.execute('use crypto')
-    cur.execute('select Bitcoins from userlog where emailaddress=(%s)',(emailadd.get(),))
-    fetchdata=cur.fetchone()
-    cur.execute('select Price from cryptodata where SNo=1')
-    fetchprice=cur.fetchone()
-    cur.close()
-    conn.close()
-    
-    l=Label(pane,text=fetchdata[0]+' BTC',font=('Consolas','14'),bg='maroon',fg='white')
-    pane.add(l)
-    l.place(x=180,y=100)
-    
-    balance_eval=fetchprice[0][1::]+'*'+fetchdata[0]
-    l=Label(pane,text='$'+str(eval(balance_eval)),font=('Consolas','14'),bg='maroon',fg='white')
-    pane.add(l)
-    l.place(x=165,y=140)
-    
-    Button(pane,text='Send Bitcoins',width=20,command=sendDetails,font=('Consolas','16','bold')).place(x=20,y=250)
-    Button(pane,text='Receive Bitcoins',width=20,command=receive,font=('Consolas','16','bold')).place(x=20,y=310)
-    Button(pane,text='Sell Bitcoins',width=20,command=sellDetails,font=('Consolas','16','bold')).place(x=20,y=370)
-    Button(pane,text='Buy Bitcoins',width=20,command=buyDetails,font=('Consolas','16','bold')).place(x=20,y=430)
-    Button(pane,text='Your Favourites',width=20,command=show_favourites,font=('Consolas','16','bold')).place(x=20,y=490)
-    Button(pane,text='Delete Your Account',width=20,command=delete_account,font=('Consolas','16','bold')).place(x=20,y=550)
-    
-##########################################################################################
-
 #for refreshing cryptodata table
-def refresh(event):
-    #connection establishment and updating cryptodata table
-    conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
-    cur=conn.cursor()
-    cur.execute('use crypto')
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=1',('$'+str(randint(120000000000,140000000000)),'$'+str(round(uniform(6000,9000),2)),'$'+str(randint(18000000000,30000000000)),str(randint(18000000,19000000))+' BTC',str(round(uniform(-7,10),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=2',('$'+str(randint(15000000000,18000000000)),'$'+str(round(uniform(120,200),2)),'$'+str(randint(7000000000,8000000000)),str(randint(100000000,110000000))+' ETH',str(round(uniform(-5,5),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=3',('$'+str(randint(9000000000,10000000000)),'$'+str(round(uniform(0.232369,2),6)),'$'+str(randint(1300000000,1400000000)),str(randint(43000000000,44000000000))+' XRP',str(round(uniform(-3,3),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=4',('$'+str(randint(4000000000,5000000000)),'$'+str(round(uniform(1,3),2)),'$'+str(randint(20000000000,25000000000)),str(randint(4000000000,4300000000))+' USDT',str(round(uniform(-5,5),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=5',('$'+str(randint(3500000000,4500000000)),'$'+str(round(uniform(200,300),2)),'$'+str(randint(1000000000,2000000000)),str(randint(18000000,19000000))+' BCH',str(round(uniform(-2,2),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=6',('$'+str(randint(2500000000,3500000000)),'$'+str(round(uniform(40,50),2)),'$'+str(randint(2500000000,3000000000)),str(randint(62000000,64000000))+' LTC',str(round(uniform(-3,3),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=7',('$'+str(randint(2000000000,3000000000)),'$'+str(round(uniform(1,4),2)),'$'+str(randint(1000000000,2000000000)),str(randint(942113890,1942113890))+' EOS',str(round(uniform(-4,4),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=8',('$'+str(randint(2000000000,3000000000)),'$'+str(round(uniform(10,20),2)),'$'+str(randint(200000000,300000000)),str(randint(150000000,160000000))+' BNB',str(round(uniform(-2,2),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=9',('$'+str(randint(1500000000,2000000000)),'$'+str(round(uniform(100,200),2)),'$'+str(randint(400000000,800000000)),str(randint(18000000,19000000))+' BSV',str(round(uniform(-2,2),2))+'%'))
-    cur.execute('update cryptodata set Market_Cap=(%s),Price=(%s),Volume=(%s),\
-Circulating_Supply=(%s),Change_24h=(%s) where SNo=10',('$'+str(randint(1000000000,1300000000)),'$'+str(round(uniform(0.01,0.09),6)),'$'+str(randint(200000000,300000000)),str(randint(20000000000,21000000000))+' XLM',str(round(uniform(-3,2),2))+'%'))
-    conn.commit()
-    cur.close()
-    conn.close()
-
+def refresh(event):    
     if event.widget.cget('cursor')=='hand1':
-        mainWin()
+        showTable()
     else:
         show_favourites()
+
+##########################################################################################
+        
+#for showing table of top 10 cryptocurrencies
+def showTable():
+    #clears the root. 
+    l=root.winfo_children()
+    for i in l:
+        i.destroy()
+        
+    #root resizing
+    root.geometry('1500x600+0+0')
+    root.maxsize(1300,600)
+    root.minsize(1300,600)
+
+    img=PhotoImage(file='edited1.png')
+    image_label=Label(root,image=img,width=1300,height=700)
+    image_label.place(x=0,y=0)
+    image_label.image=img
+
+    Button(root,text="Back",command=mainWin,font=('Consolas','14','bold')).place(x=20,y=10)
+
+    '''''''''''''''''''''''''''
+            data table
+    '''''''''''''''''''''''''''
+    
+    root.anchor(anchor='center')
+
+    #label text list
+    labtxt=['S.No.','Name','Market_Cap','Price','Volume','Circulating_Supply','Change_24h']
+    labl=[]
+    for i in range(7):
+        if i==0 or i==1:
+            Label(root,text=labtxt[i],font=('Consolas','14','bold','underline'),relief=SOLID).grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
+        else:
+            labl.append(Label(root,text=labtxt[i],font=('Consolas','14','bold','underline'),cursor='hand2',relief=SOLID))
+            labl[-1].grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
+            labl[-1].bind('<Button-1>',show_graph)
+
+    #calling getData func to data of top 10 cryptocurrencies
+    cryptoData=getData()
+    
+    for i in range(1,11):
+        Label(root,text=i,font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,ipady=3,ipadx=3,pady=1,padx=1,sticky='nsew') 
+
+    #remaining fields of cryptodata table
+    for i in range(1,11):
+        Label(root,text=cryptoData[i-1]['name'],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=1,ipady=3,ipadx=3,sticky='nsew',pady=1,padx=1)
+        Label(root,text='$'+str(round(float(cryptoData[i-1]['marketCapUsd']),3)),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=2,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+        Label(root,text='$'+str(round(float(cryptoData[i-1]['priceUsd']),3)),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=3,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+        Label(root,text='$'+str(round(float(cryptoData[i-1]['volumeUsd24Hr']),3)),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=4,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+        Label(root,text=str(round(float(cryptoData[i-1]['supply']),3))+' %s'%(cryptoData[i-1]['symbol']),font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=5,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+        Label(root,text=str(round(float(cryptoData[i-1]['changePercent24Hr']),3))+'%',font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=6,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+
+    #Add to favourite button
+    butlist=[]
+    for i in range(1,11):
+        butlist.append(Button(root,text='Add %s to favourites'%(cryptoData[i-1]['id']),font=('OCR-A-Extended','14','bold')))
+        butlist[-1].grid(row=i,column=7,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
+        butlist[-1].bind('<Button-1>',add_favourites)
+                    
+    b=Button(root,text='Refresh',cursor='hand1',font=('Consolas','16','bold'))
+    b.place(x=600,y=650)    
+    b.bind('<Button-1>',refresh)
 
 ##########################################################################################
 
@@ -764,7 +677,11 @@ def signup():
                 cur.execute('create database if not exists crypto')
                 cur.execute('use crypto')
                 cur.execute('create table if not exists userlog(Name varchar(40) not null,EmailAddress varchar(50)\
-                            primary key,Password varchar(20) not null,Bitcoins varchar(20) default "0",BitcoinAdd varchar(40) unique,favourites varchar(100))')
+                            primary key,Password varchar(20) not null,BTC varchar(20) default "0",ETH varchar(20) default "0",\
+                            BNB varchar(20) default "0",ADA varchar(20) default "0",\
+                            USDT varchar(20) default "0",DOT varchar(20) default "0",XRP varchar(20) default "0",\
+                            UNI varchar(20) default "0",THETA varchar(20) default "0",LTC varchar(20) default "0",\
+                            BitcoinAdd varchar(40) unique,favourites varchar(100))')
                 #checking for data accuracy
                 cur.execute('select emailaddress from userlog where EmailAddress=(%s)',(emailadd.get(),))
                 fetchdata=cur.fetchone()
@@ -800,7 +717,7 @@ def loglayout():
     root.maxsize(1000,500)
     root.minsize(1000,500)
     
-    root.title('Log In - KRYPTON WALLET')
+    root.title('Log In - KryptoCase')
     
     #clears the root. 
     l=root.winfo_children()
@@ -843,8 +760,6 @@ def loglayout():
     l=Label(root,text='Wanna Create a new account??',fg='darkgreen',bg='skyblue',cursor='hand2',font=('Consolas','11'))
     l.place(y=440,x=400)
     l.bind("<Button-1>",signlayout)
-
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').pack(anchor='se',side='bottom')
     
 ##########################################################################################
 
@@ -855,7 +770,7 @@ def signlayout(event):
     root.maxsize(1000,500)
     root.minsize(1000,500)
     
-    root.title('Sign Up - KRYPTON WALLET')
+    root.title('Sign Up - KryptoCase')
     
     #clears the root.
     l=root.winfo_children()
@@ -894,10 +809,38 @@ def signlayout(event):
 
     Button(root,text='Sign Up',command=signup,font=('Consolas','17','bold')).place(x=435,y=pad)
     Button(root,text='Log In',command=loglayout,font=('Consolas','17','bold')).place(x=443,y=pad+60)
-
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').pack(anchor='se',side='bottom')
-        
+    
 ##########################################################################################
+
+#for showing balance
+def showBalance():
+    l=Label(root,text='',font=('Consolas','14'),bg='skyblue',fg='darkgreen')
+    l.place(x=1040,y=170)
+
+    Label(root,text='Balance(USD):-',font=('Consolas','14'),bg='skyblue',fg='darkgreen').place(x=1040,y=200)
+    
+    l1=Label(root,text='',font=('Consolas','14'),bg='skyblue',fg='darkgreen')
+    l1.place(x=1230,y=170)
+    
+    l2=Label(root,text='',width=5,font=('Consolas','14'),bg='skyblue',fg='darkgreen')
+    l2.place(x=1230,y=200)
+    
+    cryptoData=getData(clicked.get())
+    l.config(text='Balance('+cryptoData['symbol']+'):-')
+
+    ##connection establishment and fetching user's balance
+    conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
+    cur=conn.cursor()
+    cur.execute('use crypto')
+    cur.execute(f"select {cryptoData['symbol']} from userlog where emailaddress=(%s)",(emailadd.get(),))
+    fetchdata=cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    l1.config(text=fetchdata[0]+' %s'%(cryptoData['symbol']))
+
+    balance_eval=eval(cryptoData['priceUsd']+'*'+fetchdata[0])
+    l2.config(text='$ '+str(balance_eval))
 
 #for displaying main window i.e. first window after user logs in 
 def mainWin():
@@ -907,7 +850,7 @@ def mainWin():
         i.destroy()
         
     #root resizing
-    root.geometry('1300x700+0+0')
+    root.geometry('1300x600+0+0')
     root.maxsize(1300,700)
     root.minsize(1300,700)
 
@@ -916,7 +859,7 @@ def mainWin():
     image_label.place(x=0,y=0)
     image_label.image=img
    
-    #connection establishment and creating table
+    #connection establishment and fetching user's name
     conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
     cur=conn.cursor()
     cur.execute('use crypto')
@@ -925,73 +868,31 @@ def mainWin():
     cur.close()
     conn.close()
 
-    root.title('Welcome %s - KRYPTON WALLET'%fetchdata[0])
+    root.title('Welcome %s - KryptoCase'%fetchdata[0])
     
     #account login status and logout
-    l=Label(root,text='Hi,%s'%(fetchdata[0]),bg='skyblue',fg='darkgreen',font=('Consolas','20','underline'))
-    l.place(x=950,y=10)
-    l.bind('<Button-1>',options)
+    Label(root,text='Hi,%s'%(fetchdata[0]),bg='skyblue',fg='darkgreen',font=('Consolas','14')).place(x=20,y=10)
     
-    Button(root,text='Log Out',command=loglayout,font=('Consolas','14','bold')).place(x=20,y=10)
+    Button(root,text='Log Out',command=loglayout,font=('Consolas','14','bold')).place(x=1200,y=10)
 
+    options=['bitcoin','ethereum','binance-coin','cardano','tether','polkadot',
+             'xrp','uniswap','theta','litecoin']
 
-    '''''''''''''''''''''''''''
-            data table
-    '''''''''''''''''''''''''''
+    clicked.set('bitcoin')
+
+    dropMenu=OptionMenu(root,clicked,*options)
+    dropMenu.place(x=1150,y=70)
+    dropMenu.config(font=('Consolas','14','bold'))
+
+    Button(root,text='Show Balance',command=showBalance,font=('Consolas','12','bold')).place(x=1145,y=120)
     
-    root.anchor(anchor='center')
-
-    #label text list
-    labtxt=['S.NO.','Name','Market_Cap','Price','Volume','Circulating_Supply','Change_24h']
-    labl=[]
-    for i in range(7):
-        if i==0 or i==1:
-            Label(root,text=labtxt[i],font=('Times New Roman','14','bold'),relief=SOLID).grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
-        else:
-            labl.append(Label(root,text=labtxt[i],font=('Consolas','14','bold','underline'),relief=SOLID))
-            labl[-1].grid(row=0,column=i,ipady=3,ipadx=3,padx=1,sticky='nsew')
-            labl[-1].bind('<Button-1>',show_graph)
-
-    #connection establishment and displaying cryptodata table
-    conn=mysql.connector.connect(user='root',host='localhost',passwd='Subinsk284@',database='crypto')
-    cur=conn.cursor()
-    cur.execute('use crypto')
-    cur.execute('select * from cryptodata')
-    fetchdata=cur.fetchall()
-    cur.close()
-    conn.close()
-    
-    for i in range(1,11):
-        Label(root,text=i,font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,ipady=3,ipadx=3,pady=1,padx=1,sticky='nsew')
-
-    #label list for creating labels binded to an event
-    labellist=[]
-    for i in range(1,11):
-        labellist.append(Label(root,text=fetchdata[i-1][1],font=('Consolas','14','underline','bold'),relief=SUNKEN))
-        labellist[-1].grid(row=i,column=1,ipady=3,ipadx=3,sticky='nsew',pady=1,padx=1)
-        labellist[-1].bind("<Button-1>",display_info)
-
-    #remaining fields of cryptodata table
-    for i in range(1,11):
-        Label(root,text=fetchdata[i-1][2],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=2,pady=1,padx=1,ipady=3,ipadx=3,sticky='nsew')
-        Label(root,text=fetchdata[i-1][3],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=3,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-        Label(root,text=fetchdata[i-1][4],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=4,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-        Label(root,text=fetchdata[i-1][5],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=5,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-        Label(root,text=fetchdata[i-1][6],font=('Consolas','14','bold'),relief=SUNKEN).grid(row=i,column=6,padx=1,pady=1,ipady=3,ipadx=3,sticky='nsew')
-
-    #Add to favourite button
-    butlist=[]
-    but_txtlist=['Bitcoin','Ethereum','XRP','Tether','Bitcoin_Cash','Litecoin','EOS','Binance_Coin','Bitcoin_SV','Stellar']
-    for i in range(1,11):
-        butlist.append(Button(root,text='Add %s to favourites'%(but_txtlist[i-1]),font=('OCR-A-Extended','14','bold')))
-        butlist[-1].grid(row=i,column=7,pady=1,padx=7,ipady=3,ipadx=3,sticky='nsew')
-        butlist[-1].bind('<Button-1>',add_favourites)
-                    
-    b=Button(root,text='Refresh',cursor='hand1',font=('Consolas','16','bold'))
-    b.place(x=600,y=650)    
-    b.bind('<Button-1>',refresh)
-
-    Label(root,text='**©Copyrights owned by Chaitanya Agarwal**',font=('Consolas','11','bold'),bg='skyblue',fg='darkgreen').place(x=957,y=680)
+    Button(root,text='Top 10 cryptocurrencies',width=58,command=showTable,font=('Consolas','16','bold')).place(x=300,y=200)
+    Button(root,text='Send Bitcoins',width=20,command=sendDetails,font=('Consolas','16','bold')).place(x=300,y=300)
+    Button(root,text='Receive Bitcoins',width=20,command=receive,font=('Consolas','16','bold')).place(x=300,y=400)
+    Button(root,text='Sell Bitcoins',width=20,command=sellDetails,font=('Consolas','16','bold')).place(x=300,y=500)
+    Button(root,text='Buy Bitcoins',width=20,command=buyDetails,font=('Consolas','16','bold')).place(x=750,y=300)
+    Button(root,text='Your Favourites',width=20,command=show_favourites,font=('Consolas','16','bold')).place(x=750,y=400)
+    Button(root,text='Delete Your Account',width=20,command=delete_account,font=('Consolas','16','bold')).place(x=750,y=500)
 
 ##########################################################################################
 ##########################################################################################
@@ -1014,6 +915,7 @@ sendto=StringVar()
 bitcoin=StringVar()
 transfee=StringVar()
 USD=StringVar()
+clicked=StringVar()
 
 #using data.py's databaseCreator function to create cryptocurrency's database in mysql
 try:
